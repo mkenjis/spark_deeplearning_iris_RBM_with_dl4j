@@ -1,0 +1,1 @@
+spark-shell --packages org.deeplearning4j:deeplearning4j-core:0.4-rc3.8,org.deeplearning4j:deeplearning4j-nlp:0.4-rc3.8,org.deeplearning4j:dl4j-spark:0.4-rc3.8,org.nd4j:nd4j-x86:0.4-rc3.8,org.nd4j:nd4j-jcublas-7.0:0.4-rc3.8,org.nd4j:nd4j-api:0.4-rc3.8,org.nd4j:canova-api:0.0.0.14
