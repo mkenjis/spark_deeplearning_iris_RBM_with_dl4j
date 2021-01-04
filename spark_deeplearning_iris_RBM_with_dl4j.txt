@@ -1,0 +1,127 @@
+import org.deeplearning4j.datasets.iterator.impl.IrisDataSetIterator
+import org.deeplearning4j.eval.Evaluation
+import org.deeplearning4j.nn.api.{Layer, OptimizationAlgorithm}
+import org.deeplearning4j.nn.conf.{Updater, NeuralNetConfiguration}
+import org.deeplearning4j.nn.conf.layers.{OutputLayer, RBM}
+import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
+import org.deeplearning4j.nn.weights.WeightInit
+import org.nd4j.linalg.factory.Nd4j
+import org.nd4j.linalg.lossfunctions.LossFunctions
+
+Nd4j.MAX_SLICES_TO_PRINT = -1
+Nd4j.MAX_ELEMENTS_PER_SLICE = -1
+Nd4j.ENFORCE_NUMERICAL_STABILITY = true
+
+val inputNum = 4
+var outputNum = 3
+var numSamples = 150
+var batchSize = 150
+var iterations = 1000
+var seed = 321
+var listenerFreq = iterations / 5
+val learningRate = 1e-6
+
+println("Loading data....")
+val iter = new IrisDataSetIterator(batchSize, numSamples)
+val iris = iter.next()
+iris.shuffle()
+iris.normalizeZeroMeanZeroUnitVariance()
+val testAndTrain = iris.splitTestAndTrain(0.80)
+val train = testAndTrain.getTrain
+val test = testAndTrain.getTest
+
+println("Building model....")
+val RMSE_XENT = LossFunctions.LossFunction.RMSE_XENT
+val conf = new NeuralNetConfiguration.Builder().
+  seed(seed).
+  iterations(iterations).
+  learningRate(learningRate).
+  l1(1e-1).
+  regularization(true).l2(2e-4).
+  optimizationAlgo(OptimizationAlgorithm.CONJUGATE_GRADIENT).
+  useDropConnect(true).
+  list(2).
+  layer(0, new RBM.Builder(RBM.HiddenUnit.RECTIFIED,RBM.VisibleUnit.GAUSSIAN).
+    nIn(inputNum).nOut(3).k(1).activation("relu").
+    weightInit(WeightInit.XAVIER).lossFunction(RMSE_XENT).
+    updater(Updater.ADAGRAD).dropOut(0.5).
+    build()).
+  layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.MCXENT).
+    nIn(3).nOut(outputNum).activation("softmax").build()).
+  build()
+
+val model = new MultiLayerNetwork(conf)
+model.init()
+
+println("Train the model....")
+model.fit(train.getFeatureMatrix)
+
+println("Evaluating the model....")
+val eval = new Evaluation(outputNum)
+val output = model.output(test.getFeatureMatrix,Layer.TrainingMode.TEST)
+
+(0 until output.rows()).foreach { i =>
+   val actual = train.getLabels.getRow(i).toString.trim()
+   val predicted = output.getRow(i).toString.trim()
+   println("actual " + actual + " vs predicted " + predicted)
+}
+eval.eval(test.getLabels, output)
+println(eval.stats())
+
+--------------------------
+
+scala> (0 until output.rows()).foreach { i =>
+     |    val actual = train.getLabels.getRow(i).toString.trim()
+     |    val predicted = output.getRow(i).toString.trim()
+     |    println("actual " + actual + " vs predicted " + predicted)
+     | }
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.49, 0.41, 0.11]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.48, 0.41, 0.12]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.54, 0.41, 0.05]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.60, 0.39, 0.01]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.55, 0.39, 0.06]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.58, 0.40, 0.02]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.58, 0.40, 0.02]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.58, 0.40, 0.02]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.55, 0.41, 0.04]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.57, 0.40, 0.02]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.54, 0.41, 0.05]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.57, 0.40, 0.03]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.52, 0.41, 0.07]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.51, 0.41, 0.07]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.57, 0.40, 0.03]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.53, 0.41, 0.05]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.55, 0.41, 0.04]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.59, 0.39, 0.02]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.77, 0.16, 0.07]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.55, 0.41, 0.04]
+actual [ 0.00, 0.00, 1.00] vs predicted [ 0.51, 0.39, 0.10]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.55, 0.41, 0.04]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.45, 0.40, 0.16]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.99, 0.00, 0.01]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 0.51, 0.41, 0.07]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.50, 0.41, 0.09]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.56, 0.41, 0.04]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.58, 0.40, 0.02]
+actual [ 0.00, 1.00, 0.00] vs predicted [ 1.00, 0.00, 0.00]
+actual [ 1.00, 0.00, 0.00] vs predicted [ 0.59, 0.39, 0.01]
+
+scala> eval.eval(test.getLabels, output)
+
+scala> println(eval.stats())
+
+Examples labeled as 0 classified by model as 0: 2 times
+Examples labeled as 1 classified by model as 0: 10 times
+Examples labeled as 2 classified by model as 0: 18 times
+
+Warning: class 1 was never predicted by the model. This class was excluded from the average precision
+Warning: class 2 was never predicted by the model. This class was excluded from the average precision
+
+==========================Scores========================================
+ Accuracy:  0.0667
+ Precision: 0.0667
+ Recall:    0.3333
+ F1 Score:  0.1111
+========================================================================
+
+
